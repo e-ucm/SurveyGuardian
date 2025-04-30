@@ -25,12 +25,7 @@ class surveyGuardian extends PluginBase
     protected $counter = 0; 
     protected $participant_id = 0;
 
-    protected $settings = array(
-        'test' => array(
-            'type' => 'string',
-            'label' => 'Message'
-        ),
-    );
+    protected $settings = array();
   
     public function init()
     {
@@ -67,29 +62,34 @@ class surveyGuardian extends PluginBase
         $gid = $this->getEvent()->get("gid");
 
         // initial backend settings from user under "simple plugin settings"
-        if ($this->counter < 1) {
+        if ($this->counter < 1) { 
+            // Load all question groups for this survey
+            $groups = QuestionGroup::model()->findAllByAttributes([
+                'sid' => $surveyId
+            ]);
 
-            $oEvent = $this->event;
-
-            $page_count = $this->get('group-count', 'Survey', $oEvent->get('surveyId'));
+            error_log($surveyId);
+            // Count them
+            $page_count = count($groups);
+            error_log("total_pagecount : $page_count");
             echo "<input style='display:none;' id='total_pagecount' value='".$page_count."'>";
 
-            $option_attentionchecks = $this->get('attention-checks', 'Survey', $oEvent->get('surveyId'));
+            $option_attentionchecks = $this->get('attention-checks', 'Survey', $surveyId);
             echo "<input style='display:none;' id='option_attentionchecks' value='".$option_attentionchecks."'>";
 
-            $attentioncheck_count = $this->get('ac-count', 'Survey', $oEvent->get('surveyId'));
+            $attentioncheck_count = $this->get('ac-count', 'Survey', $surveyId);
             echo "<input style='display:none;' id='attentionchecks_count' value='".$attentioncheck_count."'>";
 
-            $option_botdetection = $this->get('bot-detection', 'Survey', $oEvent->get('surveyId'));
+            $option_botdetection = $this->get('bot-detection', 'Survey', $surveyId);
             echo "<input style='display:none;' id='option_botdetection' value='".$option_botdetection."'>";
 
-            $option_manualid = $this->get('manual-id', 'Survey', $oEvent->get('surveyId'));
+            $option_manualid = $this->get('manual-id', 'Survey', $surveyId);
             echo "<input style='display:none;' id='option_manualid' value='".$option_manualid."'>";
 
-            $option_manualid_field = $this->get('manual-id-field', 'Survey', $oEvent->get('surveyId'));
+            $option_manualid_field = $this->get('manual-id-field', 'Survey', $surveyId);
             echo "<input style='display:none;' id='option_manualid_field' value='".$option_manualid_field."'>";
 
-            $option_debug_mode = $this->get('debug-mode', 'Survey', $oEvent->get('surveyId'));
+            $option_debug_mode = $this->get('debug-mode', 'Survey', $surveyId);
             echo "<input style='display:none;' id='option_debug_mode' value='".$option_debug_mode."'>";
 
             echo "<input style='display:none;' id='surveyid' value='".$surveyId."'>";
@@ -116,40 +116,21 @@ class surveyGuardian extends PluginBase
      */
     public function beforeSurveySettings()
     {
-        $url_param = parse_url($_SERVER['REQUEST_URI']);
-        if (isset($url_param["query"])) {
-            parse_str($url_param["query"], $param);
-            if (isset($param["surveyid"])) {
-                $surveyId = $param["surveyid"];
-            } else {
-                $surveyId = 0;
-            }
-        }
-
+        $event = $this->event;
+        $surveyId = $event->get('survey');
         $temp_path = getcwd()."/upload/plugins/SurveyGuardian/assets/survey-tables/".$surveyId.".csv";
         if(file_exists($temp_path)) {
             $dl_path = 'href="../../upload/plugins/SurveyGuardian/assets/survey-tables/'.$surveyId.'.csv"';
         } else {
             $dl_path = "";
-        }  
-
-        $event = $this->event;
+        }
+        
         $event->set("surveysettings.{$this->id}", array(
             'name' => get_class($this),
             'settings' => array(    
-                'info0' => array(
-                    'type' => 'info',
-                    'content' => '<p><strong><span class="cl-warning">Important information:</span><br>Due to technical limitations the plugin can only show attention checks on all pages of the survey <u>except the last one</u>.<br>You can use the last page of your survey to show non-mandatory questions such as feedback fields.</strong></p>',
-                ),       
                 'info1' => array(
                     'type' => 'info',
-                    'content' => '<h4>General Settings</h4>',
-                ), 
-                'group-count' => array(
-                    'type' => 'int',
-                    'label' => '<span class="cl-warning">Required</span>: Enter how many groups your survey structure contains.',
-                    'current' => $this->get('group-count', 'Survey', $event->get('survey')),
-                    'default' => 1,
+                    'content' => '<p><strong><span class="cl-warning">Important information:</span><br>Due to technical limitations the plugin can only show attention checks on all pages of the survey <u>except the last one</u>.<br>You can use the last page of your survey to show non-mandatory questions such as feedback fields.</strong></p>',
                 ),
                 'info2' => array(
                     'type' => 'info',
@@ -159,14 +140,14 @@ class surveyGuardian extends PluginBase
                     'type'=>'checkbox',
                     'label'=>'Attention Checks',
                     'help'=>'If you turn on attention checks, attention checking questions will be shown randomly in your survey to check participant`s attention',
-                    'current' => $this->get('attention-checks', 'Survey', $event->get('survey')),
+                    'current' => $this->get('attention-checks', 'Survey', $surveyId),
                     'default' => 0,
                 ),
                 'ac-count'=>array(
                     'type'=>'int',
                     'label'=>'Number of Attention Checks per Page',
                     'help'=>'How many attention checks should be shown to the user per page?',
-                    'current' => $this->get('ac-count', 'Survey', $event->get('survey')),
+                    'current' => $this->get('ac-count', 'Survey', $surveyId),
                     'default'=>1,
                 ),
                 'info3' => array(
@@ -177,7 +158,7 @@ class surveyGuardian extends PluginBase
                     'type'=>'checkbox',
                     'label'=>'Malicious Behavior Detection',
                     'help'=>'If you turn on malicious behavior detection, the system automatically checks the participant`s browser for any inhuman actions. <a target="_blank" href="https://github.com/fingerprintjs/BotD">More information about the tool FingerprintJS</a>.',
-                    'current' => $this->get('bot-detection', 'Survey', $event->get('survey')),
+                    'current' => $this->get('bot-detection', 'Survey', $surveyId),
                     'default'=>0,
                 ),
                 'info4' => array(
@@ -188,7 +169,7 @@ class surveyGuardian extends PluginBase
                     'type'=>'checkbox',
                     'label'=>'Use manual ID input by user',
                     'help'=>'If activated, a text input field is needed to let the users put in their ID as first input field of your whole survey!',
-                    'current' => $this->get('manual-id', 'Survey', $event->get('survey')),
+                    'current' => $this->get('manual-id', 'Survey', $surveyId),
                     'default'=>0,
                 ),
                 'info6' => array(
@@ -199,7 +180,7 @@ class surveyGuardian extends PluginBase
                     'type'=>'checkbox',
                     'label'=>'Enable debug mode<br><span class="cl-warning">Only use for unpublished surveys</span>',
                     'help'=>'If activated, the plugin will show extended logging data in the browser console for debugging purposes. Do not use for public surveys.',
-                    'current' => $this->get('debug-mode', 'Survey', $event->get('survey')),
+                    'current' => $this->get('debug-mode', 'Survey', $surveyId),
                     'default'=>0,
                 ),
                 'info5' => array(
@@ -327,10 +308,10 @@ class surveyGuardian extends PluginBase
                             </div>
                             <div>
                                 <input style=\'display:none;\' id=\'surveyid\' value=\''.$surveyId.'\'>
+                            </div>
+                            <div>
+                                You response was:<br/><pre>' . print_r($response, true) . '</pre>
                             </div>');
-                            // <div>
-                            // You response was:<br/><pre>' . print_r($response, true) . '</pre>
-                            // </div>
     }
 
 
