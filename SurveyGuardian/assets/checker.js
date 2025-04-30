@@ -232,10 +232,7 @@ function stopSurvey(error, visitorID) {
 
    logging().done(function (result) {
       if (result == 0) {
-         url = hostname + `/end.php?id=` + encodeMsg();
-         if (getUserId() == 0) {
-            url = '../upload/plugins/SurveyGuardian/assets/finished.php';
-         }
+         url = '../upload/plugins/SurveyGuardian/assets/finished.php';
          clearStorage();
          window.location.replace(url);
       } else {

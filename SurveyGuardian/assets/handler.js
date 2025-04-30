@@ -54,13 +54,27 @@ function verifySubmission() {
 // STOP SURVEY
 function stopSurvey(error, visitorID) {
    blockInput();
+   logging().done(function (result) {
+      if (result == 0) {
+         url = '../upload/plugins/SurveyGuardian/assets/finished.php';
+         clearStorage();
+         window.location.replace(url);
+      } else {
+         alert(result);
+      }
+   });
+}
 
-   url = hostname + `/end.php?id=` + encodeMsg();
-   if (getUserId() == 0) {
-      url = '../upload/plugins/SurveyGuardian/assets/finished.php';
-   }
-   clearStorage();
-   window.location.replace(url);
+// log failures to csv table
+function logging() {
+   var proof = "";
+   proof = localStorage.getItem(surveyid + "-ls-p");
+
+   return $.ajax({
+      url: '../upload/plugins/SurveyGuardian/assets/logging.php',
+      type: 'POST',
+      data: { surveyid: surveyid, userid: getUserId(), manualid: getManualId(), proof: proof, ac: verificator["attentioncheck_failed"], bd: verificator["botdetection_failed"] },
+   });
 }
 
 // block user from doing input while verificating
